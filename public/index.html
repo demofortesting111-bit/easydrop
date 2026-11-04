@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EasyDrop — Send files directly between your devices</title>
+<meta name="description" content="EasyDrop sends files and messages directly between devices over WebRTC. No accounts, no uploads to a server, files up to 2 GB.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230d9488'/%3E%3Cpath d='M16 8v11m0 0l-5-5m5 5l5-5' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+<script src="/config.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">⇩</span>
+    <span class="brand-name">EasyDrop</span>
+  </div>
+  <span id="status-pill" class="pill pill-idle">Not in a room</span>
+</header>
+
+<main>
+  <!-- ======================= HOME ======================= -->
+  <section id="view-home" class="view">
+    <h1>Send files straight to another device.</h1>
+    <p class="lede">No accounts. No uploads to a server. Files travel directly between
+      browsers, encrypted in transit — up to <strong>2&nbsp;GB</strong> per file.</p>
+
+    <div class="card home-card">
+      <button id="btn-create" class="btn btn-primary btn-big">Create a room</button>
+      <p class="hint">You get a link + QR code. Open it on the other device and you are connected.</p>
+      <div class="divider"><span>or join a room</span></div>
+      <label class="field-label" for="join-input">Room code, or paste a full room link</label>
+      <div class="join-row">
+        <input id="join-input" type="text" inputmode="text" autocomplete="off" spellcheck="false"
+               placeholder="abc-defg-hij">
+        <button id="btn-join" class="btn">Join</button>
+      </div>
+      <p id="join-error" class="error-text" hidden></p>
+    </div>
+
+    <div class="card how-card">
+      <h2>How it works</h2>
+      <ol>
+        <li>Create a room on one device.</li>
+        <li>Open the link (or scan the QR code) on the other device.</li>
+        <li>Send files and messages — they go <em>directly</em> device-to-device.
+            The server only introduces the two devices; it never sees or stores your files.</li>
+      </ol>
+      <p class="hint">Keep both devices on the page while a file is moving — nothing is stored anywhere in between.</p>
+    </div>
+  </section>
+
+  <!-- ======================= ROOM ======================= -->
+  <section id="view-room" class="view" hidden>
+    <div class="room-grid">
+      <div class="col">
+        <div class="card share-card">
+          <h2>Share this room</h2>
+          <div class="share-flex">
+            <img id="qr-img" class="qr" alt="QR code for this room's link" width="180" height="180">
+            <div class="share-side">
+              <label class="field-label" for="share-link">Room link (includes the room key — share it only with your own devices)</label>
+              <div class="copy-row">
+                <input id="share-link" type="text" readonly>
+                <button id="btn-copy" class="btn">Copy</button>
+              </div>
+              <p class="hint">Room code: <strong id="room-code-text"></strong></p>
+              <p id="share-status" class="hint">Waiting for a device to join…</p>
+              <div class="share-actions">
+                <button id="btn-password" class="btn btn-small">Set room password</button>
+                <button id="btn-diagnostics-1" class="btn btn-small btn-ghost">Check connection</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card people-card">
+          <h2>People <span id="people-count" class="count"></span></h2>
+          <ul id="people-list" class="people-list"></ul>
+          <button id="btn-rename" class="btn btn-small">Change my name</button>
+        </div>
+
+        <div class="card room-actions-card">
+          <button id="btn-leave" class="btn">Leave room</button>
+          <button id="btn-close-room" class="btn btn-danger" hidden>Close room for everyone</button>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="card files-card" id="files-card">
+          <h2>Files</h2>
+          <p id="save-method-note" class="save-note"></p>
+          <div id="drop-zone" class="drop-zone" tabindex="0">
+            <p><strong>Drop files anywhere on this page</strong>, or</p>
+            <div class="drop-actions">
+              <button id="btn-pick-files" class="btn btn-primary">Add files</button>
+              <button id="btn-pick-folder" class="btn">Add a folder</button>
+            </div>
+            <p class="hint">You can also paste files (Ctrl/⌘+V). Files can be added before anyone joins.</p>
+          </div>
+          <p id="no-peers-hint" class="hint hint-warn">No device connected yet — add a device to start sending. Files you add now will be ready to go.</p>
+          <ul id="files-list" class="files-list"></ul>
+          <input id="file-input" type="file" multiple hidden>
+          <input id="folder-input" type="file" webkitdirectory hidden>
+        </div>
+
+        <div class="card messages-card">
+          <h2>Messages</h2>
+          <p class="hint">Messages are only visible to people in the room right now. Nothing is saved.</p>
+          <ul id="messages-list" class="messages-list"></ul>
+          <div class="message-row">
+            <input id="message-input" type="text" placeholder="Type a message…" autocomplete="off">
+            <button id="btn-send-message" class="btn btn-primary" disabled>Send</button>
+          </div>
+          <p id="message-note" class="hint">No device connected yet</p>
+        </div>
+
+        <div class="card history-card">
+          <h2>History <span class="hint">(this session only)</span></h2>
+          <ul id="history-list" class="history-list">
+            <li class="hint">Nothing transferred yet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= FULL-SCREEN NOTICE ======================= -->
+  <section id="view-notice" class="view" hidden>
+    <div class="card notice-card">
+      <h1 id="notice-title">Notice</h1>
+      <p id="notice-text"></p>
+      <div class="notice-actions">
+        <button id="btn-notice-retry" class="btn btn-primary" hidden>Retry connection</button>
+        <button id="btn-notice-diagnostics" class="btn" hidden>Check connection</button>
+        <button id="btn-notice-home" class="btn">Back to start</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="drop-overlay" hidden><p>Drop files to add them to the room</p></div>
+<div id="error-banner" class="error-banner" hidden>
+  <span id="error-banner-text"></span>
+  <button id="btn-error-diagnostics" class="btn btn-small">Check connection</button>
+  <button id="btn-error-dismiss" class="btn btn-small btn-ghost">Dismiss</button>
+</div>
+
+<!-- Rename dialog -->
+<dialog id="dialog-rename" class="dialog">
+  <form method="dialog">
+    <h2>Your name in this room</h2>
+    <input id="rename-input" type="text" maxlength="40" autocomplete="off">
+    <div class="dialog-actions">
+      <button value="cancel" class="btn" formnovalidate>Cancel</button>
+      <button id="btn-rename-save" value="save" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Set password dialog (host) -->
+<dialog id="dialog-password-set" class="dialog">
+  <form method="dialog">
+    <h2>Room password</h2>
+    <p class="hint">A light lock: guests must type this password after connecting, and the
+      host device checks it. It keeps casual joiners out — it is not strong authentication.
+      Leave empty and save to remove the password.</p>
+    <input id="password-set-input" type="password" autocomplete="new-password" placeholder="New room password">
+    <div class="dialog-actions">
+      <button value="cancel" class="btn" formnovalidate>Cancel</button>
+      <button id="btn-password-save" value="save" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Enter password dialog (guest) -->
+<dialog id="dialog-password-enter" class="dialog">
+  <form method="dialog">
+    <h2>This room has a password</h2>
+    <p class="hint">The host set a password for this room. Type it to take part.</p>
+    <p id="password-enter-error" class="error-text" hidden>That password was not accepted. Try again.</p>
+    <input id="password-enter-input" type="password" autocomplete="off" placeholder="Room password">
+    <div class="dialog-actions">
+      <button id="btn-password-enter-save" value="save" class="btn btn-primary">Join room</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diagnostics dialog -->
+<dialog id="dialog-diagnostics" class="dialog dialog-wide">
+  <form method="dialog">
+    <h2>Connection check</h2>
+    <p class="hint">Runs a real test: it asks the internet (via STUN) how this device can be
+      reached, and gathers the connection candidates your browser would use.</p>
+    <ul id="diagnostics-results" class="diagnostics-list"></ul>
+    <div class="dialog-actions">
+      <button id="btn-diagnostics-run" class="btn" type="button">Run again</button>
+      <button value="close" class="btn btn-primary">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<footer class="footer">
+  <p>EasyDrop — files go directly between your devices. The server only introduces them; it never receives or stores your files.</p>
+</footer>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
